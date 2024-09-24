@@ -24,10 +24,11 @@ jobs:
           context: .
           file: ./docker/Dockerfile.user
           push: true
-          tags: imkuldeepahlawat/week-18-class:latest # Replace with your Docker Hub username and repository
+          tags: imkuldeepahlawat/week-18-class:${{ github.sha }}
 
       - name: Verify Pushed Image
-        run: docker pull imkuldeepahlawat/week-18-class:latest # Replace with your Docker Hub username and repository
+        run: docker pull imkuldeepahlawat/week-18-class:${{ github.sha }}
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -35,7 +36,19 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_KEY }}
           script: |
-            sudo docker pull imkuldeepahlawat/week-18-class:latest
-            sudo docker stop web-app || true
-            sudo docker rm web-app || true
-            sudo docker run -d --name web-app -p 3005:3000 imkuldeepahlawat/week-18-class:latest
+            # Pull the new image
+            sudo docker pull imkuldeepahlawat/week-18-class:${{ github.sha }}
+
+            # Stop and remove the old container
+            sudo docker stop web-app && sudo docker rm web-app
+
+            # Run the new container
+            sudo docker run -d \
+              --name web-app \
+              --restart unless-stopped \
+              -p 3005:3000 \
+              -e NODE_ENV=production \
+              imkuldeepahlawat/week-18-class:${{ github.sha }}
+
+            # Clean up old images
+            sudo docker image prune -af
