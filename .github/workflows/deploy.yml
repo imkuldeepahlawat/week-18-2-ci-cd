@@ -1,4 +1,4 @@
-name: Build and Deploy to Docker Hub
+name: Build and Deploy to Docker Hub and EC2
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Check Out Repo
@@ -34,13 +34,18 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
+          debug: true
           script: |
+            echo "Connection successful"
             # Pull the new image
             sudo docker pull imkuldeepahlawat/week-18-class:${{ github.sha }}
 
             # Stop and remove the old container
-            sudo docker stop web-app && sudo docker rm web-app
+            sudo docker stop web-app || true
+            sudo docker rm web-app || true
 
             # Run the new container
             sudo docker run -d \
@@ -52,3 +57,5 @@ jobs:
 
             # Clean up old images
             sudo docker image prune -af
+
+            echo "Deployment completed successfully"
